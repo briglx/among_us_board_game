@@ -57,3 +57,25 @@ One exception is for logging which uses the percentage formatting. This is to av
 ```python
 _LOGGER.info("Can't connect to the webservice %s at %s", string1, string2)
 ```
+
+### Testing
+
+```bash
+pip3 install -r requirements_dev.txt
+
+# Install this module for development
+pip3 install -e .
+```
+
+Now that you have all test dependencies installed, you can run linting and tests on the project:
+
+```bash
+isort .
+codespell --skip=".venv"
+black main.py among_us tests setup.py
+flake8 main.py among_us tests setup.py
+pylint main.py among_us tests setup.py
+pydocstyle main.py among_us tests setup.py
+pytest tests
+
+```
