@@ -48,14 +48,14 @@ ROOMS = [
     "Fancy Room",
     "Fancy Room",
     "Fancy Room",
-    # "TV Room",
-    # "TV Room",
-    # "TV Room",
-    # "TV Room",
-    # "TV Room",
+    "TV Room",
+    "TV Room",
+    "TV Room",
+    "TV Room",
+    "TV Room",
 ]
 
-IMPOSTER_CHANCES = 10
+IMPOSTER_CHANCES = 5
 
 
 class Player:
@@ -95,14 +95,6 @@ class Player:
         return f"{self.name} ({self.assignment}, {self.position})"
 
 
-# def get_players(amount=5):
-#     """Get players."""
-#     players = []
-#     for i in range(amount):
-#         players.append(Player(f"Player {i+1}"))
-#     return players
-
-
 def get_players(assignments=None):
     """Get players."""
     players = []
@@ -116,6 +108,10 @@ class Simulation:
 
     def __init__(self, seed, assignments=None, body_location=None, deck=None):
         """Initialize the Game."""
+        self._card_log = []
+        self._ghosts = []
+        self._game_over = False
+
         self._seed = seed
         random.seed(seed)
 
@@ -129,7 +125,7 @@ class Simulation:
         self._body = Player("Body", "Body")
         if body_location is None:
             body_location = random.choice(ROOMS)
-        self._body.position = body_location
+        self.move_to_room(self._body, body_location)
 
         if deck:
             self._deck = deck
@@ -137,21 +133,9 @@ class Simulation:
             self._deck = ROOMS.copy()
             random.shuffle(self._deck)
 
-        self._card_log = []
-        self._ghosts = []
-        self._game_over = False
-
         logging.debug("Enter players. %s", self._players)
         logging.debug("Assignments: %s ", assignments)
         logging.debug("Using Deck %s", self._deck)
-
-        # logging.debug("Add body to game %s", self._body_location)
-        # self.move_to_room(self.body, self._body_location)
-
-    # @property
-    # def positions(self):
-    #     """Positions of players."""
-    #     return self._positions
 
     @property
     def ghosts(self):
@@ -169,14 +153,9 @@ class Simulation:
         self._card_log.append(card)
         return card
 
-    # def move_to_room(self, player, room):
-    #     """Move player to room."""
-    #     player.position = room
-    #     # self._positions[player.name] = room
-
     def imposter_has_killed(self):
         """Check if the imposter has killed."""
-        return len(self.ghosts) > 0
+        return len(self._ghosts) > 0
 
     def kick_imposter_out(self):
         """Kick imposter into space."""
@@ -214,7 +193,6 @@ class Simulation:
         if player not in self._ghosts:
             self._ghosts.append(player)
             player.position = "Grave"
-            # self._positions[player.name] = "Grave"
 
     def active_players(self, players_this_round):
         """Return active players."""
@@ -271,6 +249,75 @@ class Simulation:
         else:
             logging.debug("No rivals in the room.")
 
+    def rate_room_risk(self, player, room):
+        """Rate the risk of the room."""
+        if player.assignment == "Imposter":
+            return 0
+
+        room_risk = 0
+        player_in_room = False
+        imposter_in_room = False
+
+        for rival in self.players:
+            if rival.position == room:
+                player_in_room = True
+            if rival.assignment == "Imposter" and rival.position == room:
+                imposter_in_room = True
+
+        # Determine Risk
+        if len(self._ghosts) > 0 and imposter_in_room:
+            room_risk = room_risk + 10
+
+        if len(self._ghosts) == 0 and player_in_room:
+            room_risk = room_risk + 5
+
+        return room_risk
+
+    def rate_room_reward(self, player, room):
+        """Rate the room reward score."""
+        room_reward = 0
+
+        if player.assignment == "Imposter":
+            for rival in self.players:
+                if rival != player and rival.position == room:
+                    room_reward = room_reward + 10
+
+        if player.assignment == "Crew":
+            if self._body.position == room:
+                room_reward = room_reward + 1
+
+        return room_reward
+
+    def find_optimal_room(self, player, potential_rooms):
+        """Find optimal room based on risk and reward."""
+        optimal_room = (-1, None)
+        for room in potential_rooms:
+            risk_score = self.rate_room_risk(player, room)
+            reward_score = self.rate_room_reward(player, room)
+            cur_score = reward_score - 2 * risk_score
+
+            optimal_score, _ = optimal_room
+            if cur_score > optimal_score:
+                optimal_room = (cur_score, room)
+
+        return optimal_room[1]
+
+    def move_to_room(self, player, room):
+        """Move player to room."""
+        if room == "Bedroom":
+            potential_rooms = ["Bedroom1", "Bedroom2", "Bedroom3"]
+            ideal_room = self.find_optimal_room(player, potential_rooms)
+            player.position = ideal_room
+
+        elif room == "Bathroom":
+            potential_rooms = ["Bathroom1", "Bathroom2"]
+            ideal_room = self.find_optimal_room(player, potential_rooms)
+            player.position = ideal_room
+
+        else:
+
+            player.position = room
+
     def reshuffle_deck(self):
         """Reshuffle the deck."""
         self._deck = ROOMS.copy()
@@ -316,7 +363,7 @@ class Simulation:
                     if not self._game_over and self.is_alive(player):
                         room = self.draw_card()
                         logging.info("%s drew %s", player.name, room)
-                        player.position = room
+                        self.move_to_room(player, room)
                         # Take Action
                         self.take_action(player, True)
 
