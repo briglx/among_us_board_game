@@ -55,7 +55,13 @@ ROOMS = [
     "TV Room",
 ]
 
-IMPOSTER_CHANCES = 5
+POTENTIAL_ROOMS = {"Bedroom": 3, "Bathroom": 2}
+IMPOSTER_CHANCES = 20
+
+REWARD_IMPOSTER_TO_CREW = 10
+REWARD_CREW_TO_BODY = 1
+RISK_CREW_TO_IMPOSTER = 10
+RISK_CREW_TO_RIVAL = 5
 
 
 class Player:
@@ -266,10 +272,10 @@ class Simulation:
 
         # Determine Risk
         if len(self._ghosts) > 0 and imposter_in_room:
-            room_risk = room_risk + 10
+            room_risk = room_risk + RISK_CREW_TO_IMPOSTER
 
         if len(self._ghosts) == 0 and player_in_room:
-            room_risk = room_risk + 5
+            room_risk = room_risk + RISK_CREW_TO_RIVAL
 
         return room_risk
 
@@ -280,11 +286,11 @@ class Simulation:
         if player.assignment == "Imposter":
             for rival in self.players:
                 if rival != player and rival.position == room:
-                    room_reward = room_reward + 10
+                    room_reward = room_reward + REWARD_IMPOSTER_TO_CREW
 
         if player.assignment == "Crew":
             if self._body.position == room:
-                room_reward = room_reward + 1
+                room_reward = room_reward + REWARD_CREW_TO_BODY
 
         return room_reward
 
@@ -304,18 +310,11 @@ class Simulation:
 
     def move_to_room(self, player, room):
         """Move player to room."""
-        if room == "Bedroom":
-            potential_rooms = ["Bedroom1", "Bedroom2", "Bedroom3"]
+        if room in POTENTIAL_ROOMS:
+            potential_rooms = [room + str(x) for x in range(POTENTIAL_ROOMS[room])]
             ideal_room = self.find_optimal_room(player, potential_rooms)
             player.position = ideal_room
-
-        elif room == "Bathroom":
-            potential_rooms = ["Bathroom1", "Bathroom2"]
-            ideal_room = self.find_optimal_room(player, potential_rooms)
-            player.position = ideal_room
-
         else:
-
             player.position = room
 
     def reshuffle_deck(self):
@@ -327,11 +326,11 @@ class Simulation:
         """Determine winner of simulation."""
         winner = None
         if self.is_imposter_kicked_out():
-            winner = "Crew!!"
+            winner = "Crew"
         elif turn_count + 1 == imposter_reveal_turn:
-            winner = "Crew!! Imposter ran out of turns"
+            winner = "Crew (Imposter ran out of turns)"
         elif len(self._players) == (len(self._ghosts) + 1):
-            winner = "Imposter!!"
+            winner = "Imposter"
         else:
             winner = "No Winner"
 
@@ -400,3 +399,5 @@ class Simulation:
             self._players,
             self._card_log,
         )
+
+        return (turn_count, winner)

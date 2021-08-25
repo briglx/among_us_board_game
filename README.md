@@ -1,5 +1,6 @@
-# among_us_board_game
+# Among us board game Simulator
 
+Project to simulate the board game Among Us. The project has a simulator and a genetic algorithm used to optimize game play.
 
 # Rule Questions
 
@@ -79,3 +80,6 @@ pydocstyle main.py among_us tests setup.py
 pytest tests
 
 ```
+
+# References
+- Genetic Algorithm https://machinelearningmastery.com/simple-genetic-algorithm-from-scratch-in-python/

@@ -2,10 +2,25 @@
 """Main script for Game Simulator."""
 import argparse
 import logging
+import random
 
 from among_us import Simulation
 
 logging.basicConfig(filename="game.log", level=logging.WARNING)
+
+
+# def fitness(simulation):
+#     pass
+
+# def test_parameters():
+
+
+#     seed = random.randint(1, 100000000000)
+
+#     sim = Simulation(seed=seed)
+#     sim.run()
+#     sim.results()
+
 
 if __name__ == "__main__":
     logging.debug("Starting script")
@@ -41,20 +56,23 @@ if __name__ == "__main__":
     BODY_LOCATION = "Back Patio"
     deck = ["Kitchen", "Kitchen", "Kitchen", "Kitchen", "Office", "Office"]
 
-    for _ in range(1000):
+    # for _ in range(1000):
 
-        import random
+    #     import random
 
-        seed = random.randint(1, 100000000000)
+    #     seed = random.randint(1, 100000000000)
 
-        simulation = Simulation(seed=seed)
-        simulation.run()
+    #     simulation = Simulation(seed=seed)
+    #     simulation.run()
 
     # simulation = Simulation(seed=31316319423)
     # simulation.run()
 
-    # simulation = Simulation(seed=27730247269)
-    # simulation.run()
+    random.seed(1)
+    for _ in range(1000):
+        seed = random.randint(1, 100000000000)
+        sim = Simulation(seed=seed)
+        _, winner = sim.run()
 
     # game = Game(seed=100,assignments=assignments,body_location=body_location,deck=deck )
     # game.game_loop()

@@ -14,4 +14,10 @@ def test_all_ghosts_in_grave_when_imposter_wins():
     assert len(players_in_grave) == len(simulation.ghosts)
 
 
-test_all_ghosts_in_grave_when_imposter_wins()
+def test_simulation_results():
+    """Test restuls of simulation."""
+
+    simulation = Simulation(seed=1)
+    _, winner = simulation.run()
+
+    assert winner == "Crew"
