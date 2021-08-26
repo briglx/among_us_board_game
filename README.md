@@ -78,6 +78,7 @@ flake8 main.py among_us tests setup.py
 pylint main.py among_us tests setup.py
 pydocstyle main.py among_us tests setup.py
 pytest tests
+python -m pytest --cov-report term-missing --cov=among_us
 
 ```
 
