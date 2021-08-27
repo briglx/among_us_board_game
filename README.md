@@ -84,3 +84,4 @@ python -m pytest --cov-report term-missing --cov=among_us
 
 # References
 - Genetic Algorithm https://machinelearningmastery.com/simple-genetic-algorithm-from-scratch-in-python/
+- An Introduction to Genetic Algorithms By Melanie Mitchell https://www.boente.eti.br/fuzzy/ebook-fuzzy-mitchell.pdf

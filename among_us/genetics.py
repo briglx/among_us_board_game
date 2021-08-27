@@ -5,115 +5,36 @@ import numpy as np
 
 from among_us import Simulation
 
-# Genome is made up of an array of features.
-# [0, 0, 1, ... , 0, 1, 1]
-# The index of the feature is define by the constants below
-
-# Player Count is bitwise added from 0-15
-# Base is 3 so values are 3-18
-# index[0:4]
-PLAYER_COUNT_0 = 0
-PLAYER_COUNT_2 = 1
-PLAYER_COUNT_4 = 2
-PLAYER_COUNT_8 = 3
-
-# Imposter is bitwise added from 0 to 7
-# Base is 1 so values are 1-8
-# index[4:7]
-IMPOSTER_COUNT_0 = 4
-IMPOSTER_COUNT_2 = 5
-IMPOSTER_COUNT_4 = 6
-
-# Body count is bitwise added from 0 to 7
-# Base is 1 so values are 1-8
-# index[7:10]
-BODY_COUNT_0 = 7
-BODY_COUNT_2 = 8
-BODY_COUNT_4 = 9
-
-# Room type count is bitwise from 0-7
-# Describes the number of different types of rooms
-# Base is 3 so values are 3-10
-# index[10:13]
-ROOM_TYPE_COUNT_0 = 10
-ROOM_TYPE_COUNT_2 = 11
-ROOM_TYPE_COUNT_4 = 12
-
-# Card count by Room Type is the number of each room type in the deck
-# is bitwise added from 0 to 15
-# Base is 3 so values are 3-18
-# index[13:17]
-CARD_COUNT_BY_ROOM_0 = 13
-CARD_COUNT_BY_ROOM_2 = 14
-CARD_COUNT_BY_ROOM_4 = 15
-CARD_COUNT_BY_ROOM_8 = 16
-
-# Duplicate Rooms is Bitwise added from 0-7
-# index[17:20]
-DUPLICATE_ROOMS_0 = 17
-DUPLICATE_ROOMS_2 = 18
-DUPLICATE_ROOMS_4 = 19
-
-# Duplicate Rooms Strategy is how the rooms are built and is Categorical.
-# Default behavior is to build DUPLICATE_ROOM_STRATEGY_EQUAL  is Bitwise added from 0-15
-# index[20:21]
-DUPLICATE_ROOM_STRATEGY_EQUAL = (
-    101  # All duplicate rooms will have the same number of rooms
+from .const import (
+    CONF_ASSIGNMENTS,
+    CONF_BODY_LOCATIONS,
+    CONF_DECK,
+    CONF_IMPOSTER_CHANCES,
+    CONF_POTENTIAL_ROOMS,
+    CONF_REWARD_CREW_TO_BODY,
+    CONF_REWARD_IMPOSTER_TO_CREW,
+    CONF_RISK_CREW_TO_IMPOSTER,
+    CONF_RISK_CREW_TO_RIVAL,
+    CONF_SEED,
+    DUPLICATE_ROOM_STRATEGY_EQUAL,
+    DUPLICATE_ROOM_STRATEGY_LADDER,
+    VALID_GENOTYPE_LEN,
 )
-DUPLICATE_ROOM_STRATEGY_LADDER = 20  # Duplicate Rooms will have growing number of room
-
-# Duplicate room instensity determines the number of duplicate room is Bitwise added from 0-3
-# Base is 1 so values are 1-4
-# index[21:23]
-DUPLICATE_ROOM_INTESITY_0 = 21
-DUPLICATE_ROOM_INTESITY_2 = 22
-
-# Imposter chances are bitwise added from 0-15.
-# Base is 3 so values are 3-18
-# index[23:27]
-IMPOSTER_CHANCES_0 = 23
-IMPOSTER_CHANCES_2 = 24
-IMPOSTER_CHANCES_4 = 25
-IMPOSTER_CHANCES_8 = 26
-
-# Reward Imposter to Crew is bitwise added from 0 to 15
-# index[27:31]
-REWARD_IMPOSTER_TO_CREW_0 = 27
-REWARD_IMPOSTER_TO_CREW_2 = 28
-REWARD_IMPOSTER_TO_CREW_4 = 29
-REWARD_IMPOSTER_TO_CREW_8 = 30
-
-# Reward Crew to Body is bitwise added from 0 to 15
-# index[31:34]
-REWARD_CREW_TO_BODY_0 = 31
-REWARD_CREW_TO_BODY_2 = 32
-REWARD_CREW_TO_BODY_4 = 33
-REWARD_CREW_TO_BODY_8 = 34
-
-# Reward Crew to Imposter is bitwise added from 0 to 15
-# index[35:39]
-RISK_CREW_TO_IMPOSTER_0 = 35
-RISK_CREW_TO_IMPOSTER_2 = 36
-RISK_CREW_TO_IMPOSTER_4 = 37
-RISK_CREW_TO_IMPOSTER_8 = 38
-
-# Reward Crew to Rival is bitwise added from 0 to 15
-# index[39:43]
-RISK_CREW_TO_RIVAL_0 = 39
-RISK_CREW_TO_RIVAL_2 = 40
-RISK_CREW_TO_RIVAL_4 = 41
-RISK_CREW_TO_RIVAL_8 = 42
-
-# Other Invalid combinations
-# Imposter Count Greater than or equal Players
-# Body count greater than or equal to rooms
-# Duplicate rooms can't be greater than room count
 
 
 def create_random_population(size):
     """Create random population from size."""
-    population = [np.random.randint(0, 2, 45).tolist() for _ in range(size)]
+    population = [
+        np.random.randint(0, 2, VALID_GENOTYPE_LEN).tolist() for _ in range(size)
+    ]
     return population
+
+
+def calc_fitness(genotype, seed=None):
+    """Calculate the fitness of the genotype."""
+    phenotype = Phenotype(seed, genotype)
+
+    return phenotype.score()
 
 
 # pylint: disable-msg=R0902
@@ -254,13 +175,86 @@ class Phenotype:
 
         return is_valid
 
+    def get_assignments(self):
+        """Get player assignments."""
+        assignments = []
+
+        for _ in range(self._imposter_count):
+            assignments.append("Imposter")
+
+        remaining_players = self._player_count - self._imposter_count
+
+        for _ in range(remaining_players):
+            assignments.append("Crew")
+        random.shuffle(assignments)
+
+        return assignments
+
+    def get_deck(self):
+        """Get deck for simulation."""
+        deck = []
+        for i in range(self.room_type_count):
+            for _ in range(self.card_count_per_room):
+                deck.append(f"Room{i}")
+        random.shuffle(deck)
+        return deck
+
+    def get_body_locations(self, deck):
+        """Get body locations for simulation."""
+        body_locations = []
+        for _ in range(self.body_count):
+            # Don't place bodies in same room
+            body_locations.append(
+                random.choice([card for card in deck if card not in body_locations])
+            )
+        return body_locations
+
+    def get_duplicate_rooms(self, deck):
+        """Get the duplicate rooms."""
+        potential_room_types = []
+        for _ in range(self.duplicate_room_count):
+            # Don't choose the same room type
+            potential_room_types.append(
+                random.choice(
+                    [card for card in deck if card not in potential_room_types]
+                )
+            )
+
+        potential_rooms = {}
+        if self.duplicate_room_strategy == DUPLICATE_ROOM_STRATEGY_LADDER:
+            ladder_count = 0
+            for room_type in potential_room_types:
+                potential_rooms[room_type] = self.duplicate_room_intesity + ladder_count
+                ladder_count = ladder_count + 1
+        else:
+            for room_type in potential_room_types:
+                potential_rooms[room_type] = self.duplicate_room_intesity
+
+        return potential_rooms
+
     def score(self):
         """Return winning ratio score from simulation."""
         score = {}
         for _ in range(self._iterations):
-            seed = random.randint(1, 100000000000)
-            sim = Simulation(seed=seed)
-            _, winner = sim.run()
+
+            assignments = self.get_assignments()
+            deck = self.get_deck()
+            body_locations = self.get_body_locations(deck)
+            potential_rooms = self.get_duplicate_rooms(deck)
+
+            config = {}
+            config[CONF_SEED] = random.randint(1, 100000000000)
+            config[CONF_ASSIGNMENTS] = assignments
+            config[CONF_BODY_LOCATIONS] = body_locations
+            config[CONF_DECK] = deck
+            config[CONF_POTENTIAL_ROOMS] = potential_rooms
+            config[CONF_IMPOSTER_CHANCES] = self.imposter_chances
+            config[CONF_REWARD_IMPOSTER_TO_CREW] = self.reward_imposter_to_crew
+            config[CONF_REWARD_CREW_TO_BODY] = self.reward_crew_to_body
+            config[CONF_RISK_CREW_TO_IMPOSTER] = self.risk_crew_to_imposter
+            config[CONF_RISK_CREW_TO_RIVAL] = self.risk_crew_to_rival
+
+            _, winner = Simulation(config).run()
 
             if winner not in score:
                 score[winner] = 1

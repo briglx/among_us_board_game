@@ -2,66 +2,26 @@
 import logging
 import random
 
-DEFAULT_PLAYERS = ["Player 1", "Player 2", "Player 3", "Player 4"]
-DEFAULT_ASSIGNMENTS = ["Crew", "Crew", "Crew", "Imposter"]
-ROOMS = [
-    "Bedroom",
-    "Bedroom",
-    "Bedroom",
-    "Bedroom",
-    "Bedroom",
-    "Bedroom",
-    "Bedroom",
-    "Bedroom",
-    "Office",
-    "Office",
-    "Office",
-    "Office",
-    "Office",
-    "Bathroom",
-    "Bathroom",
-    "Bathroom",
-    "Bathroom",
-    "Bathroom",
-    "Kitchen",
-    "Kitchen",
-    "Kitchen",
-    "Kitchen",
-    "Kitchen",
-    "Garage",
-    "Garage",
-    "Garage",
-    "Garage",
-    "Garage",
-    "Back Patio",
-    "Back Patio",
-    "Back Patio",
-    "Back Patio",
-    "Back Patio",
-    "Living Room",
-    "Living Room",
-    "Living Room",
-    "Living Room",
-    "Living Room",
-    "Fancy Room",
-    "Fancy Room",
-    "Fancy Room",
-    "Fancy Room",
-    "Fancy Room",
-    "TV Room",
-    "TV Room",
-    "TV Room",
-    "TV Room",
-    "TV Room",
-]
-
-POTENTIAL_ROOMS = {"Bedroom": 3, "Bathroom": 2}
-IMPOSTER_CHANCES = 20
-
-REWARD_IMPOSTER_TO_CREW = 10
-REWARD_CREW_TO_BODY = 1
-RISK_CREW_TO_IMPOSTER = 10
-RISK_CREW_TO_RIVAL = 5
+from .const import (
+    CONF_ASSIGNMENTS,
+    CONF_BODY_LOCATIONS,
+    CONF_DECK,
+    CONF_IMPOSTER_CHANCES,
+    CONF_POTENTIAL_ROOMS,
+    CONF_REWARD_CREW_TO_BODY,
+    CONF_REWARD_IMPOSTER_TO_CREW,
+    CONF_RISK_CREW_TO_IMPOSTER,
+    CONF_RISK_CREW_TO_RIVAL,
+    CONF_SEED,
+    DEFAULT_ASSIGNMENTS,
+    DEFAULT_IMPOSTER_CHANCES,
+    DEFAULT_POTENTIAL_ROOMS,
+    DEFAULT_REWARD_CREW_TO_BODY,
+    DEFAULT_REWARD_IMPOSTER_TO_CREW,
+    DEFAULT_RISK_CREW_TO_IMPOSTER,
+    DEFAULT_RISK_CREW_TO_RIVAL,
+    DEFAULT_ROOMS,
+)
 
 
 class Player:
@@ -112,32 +72,60 @@ def get_players(assignments=None):
 class Simulation:
     """Simulator of board game."""
 
-    def __init__(self, seed, assignments=None, body_location=None, deck=None):
+    def __init__(
+        self,
+        config,
+    ):
         """Initialize the Game."""
         self._card_log = []
         self._ghosts = []
+        self._bodies = []
         self._game_over = False
 
-        self._seed = seed
-        random.seed(seed)
+        # Set Config settings
+        self._config = config.copy()
 
-        # Make assignments
+        random.seed(self._config.get(CONF_SEED))
+
+        assignments = self._config.get(CONF_ASSIGNMENTS)
         if assignments is None:
             assignments = DEFAULT_ASSIGNMENTS.copy()
             random.shuffle(assignments)
         self._players = get_players(assignments)
 
-        # Place Body
-        self._body = Player("Body", "Body")
-        if body_location is None:
-            body_location = random.choice(ROOMS)
-        self.move_to_room(self._body, body_location)
-
-        if deck:
-            self._deck = deck
-        else:
-            self._deck = ROOMS.copy()
+        self._deck = self._config.get(CONF_DECK)
+        if self._deck is None:
+            self._deck = DEFAULT_ROOMS.copy()
             random.shuffle(self._deck)
+
+        # Set default values
+        if self._config.get(CONF_POTENTIAL_ROOMS) is None:
+            self._config[CONF_POTENTIAL_ROOMS] = DEFAULT_POTENTIAL_ROOMS
+
+        if self._config.get(CONF_IMPOSTER_CHANCES) is None:
+            self._config[CONF_IMPOSTER_CHANCES] = DEFAULT_IMPOSTER_CHANCES
+
+        if self._config.get(CONF_REWARD_IMPOSTER_TO_CREW) is None:
+            self._config[CONF_REWARD_IMPOSTER_TO_CREW] = DEFAULT_REWARD_IMPOSTER_TO_CREW
+
+        if self._config.get(CONF_REWARD_CREW_TO_BODY) is None:
+            self._config[CONF_REWARD_CREW_TO_BODY] = DEFAULT_REWARD_CREW_TO_BODY
+
+        if self._config.get(CONF_RISK_CREW_TO_IMPOSTER) is None:
+            self._config[CONF_RISK_CREW_TO_IMPOSTER] = DEFAULT_RISK_CREW_TO_IMPOSTER
+
+        if self._config.get(CONF_RISK_CREW_TO_RIVAL) is None:
+            self._config[CONF_RISK_CREW_TO_RIVAL] = DEFAULT_RISK_CREW_TO_RIVAL
+
+        # Place Body
+        body_locations = self._config.get(CONF_BODY_LOCATIONS)
+        if body_locations is None:
+            body_locations = [random.choice(self._deck)]
+
+        for i, location in enumerate(body_locations):
+            body = Player(f"Body{i}", "Body")
+            self.move_to_room(body, location)
+            self._bodies.append(body)
 
         logging.debug("Enter players. %s", self._players)
         logging.debug("Assignments: %s ", assignments)
@@ -175,10 +163,16 @@ class Simulation:
 
     def is_imposter_kicked_out(self):
         """Check if imposter is in space."""
-        for player in self._players:
-            if player.assignment == "Imposter":
-                return player.position == "Space"
-        return False
+        return (
+            len(
+                [
+                    player
+                    for player in self._players
+                    if player.assignment == "Imposter" and player.position == "Space"
+                ]
+            )
+            > 0
+        )
 
     def get_rivals_in_my_room(self, player):
         """Return rivals in same position of player."""
@@ -189,8 +183,9 @@ class Simulation:
                 if rival.name != player.name and rival.position == player.position:
                     rivals.append(rival)
 
-            if self._body.position == player.position:
-                rivals.append(self._body)
+            for body in self._bodies:
+                if body.position == player.position:
+                    rivals.append(body)
 
         return rivals
 
@@ -218,9 +213,7 @@ class Simulation:
             player for player in self._players if player not in self._ghosts
         ]
         if self.imposter_has_killed() and len(players_still_in_the_game) > 1:
-            # Kick Imposter out
             self.kick_imposter_out()
-            # self._positions[self._imposter] = "Space"
 
     def take_action(self, player, is_entering):
         """Player takes action entering or leaving a room."""
@@ -228,7 +221,7 @@ class Simulation:
         if len(rivals) > 0:
             if player.is_imposter():
                 for rival in rivals:
-                    if rival.name != "Body":
+                    if rival.name not in [body.name for body in self._bodies]:
                         logging.debug("Imposter taking action.")
                         self.kill_player(rival)
                         logging.info("%s killed %s", player.name, rival.name)
@@ -246,7 +239,9 @@ class Simulation:
                 # If Entering or Leaving a Room (Action before/after draw card)
                 # Check if there is a body and a killer: Call meeting
                 for rival in rivals:
-                    if rival.name == "Body" and self.is_alive(player):
+                    if rival.name in [
+                        body.name for body in self._bodies
+                    ] and self.is_alive(player):
                         logging.debug("Crew taking action.")
                         logging.info("%s found a body!", player)
                         if len(self._ghosts) > 0:
@@ -272,10 +267,9 @@ class Simulation:
 
         # Determine Risk
         if len(self._ghosts) > 0 and imposter_in_room:
-            room_risk = room_risk + RISK_CREW_TO_IMPOSTER
-
+            room_risk = room_risk + self._config.get(CONF_RISK_CREW_TO_IMPOSTER)
         if len(self._ghosts) == 0 and player_in_room:
-            room_risk = room_risk + RISK_CREW_TO_RIVAL
+            room_risk = room_risk + self._config.get(CONF_RISK_CREW_TO_RIVAL)
 
         return room_risk
 
@@ -286,11 +280,16 @@ class Simulation:
         if player.assignment == "Imposter":
             for rival in self.players:
                 if rival != player and rival.position == room:
-                    room_reward = room_reward + REWARD_IMPOSTER_TO_CREW
+                    room_reward = room_reward + self._config.get(
+                        CONF_REWARD_IMPOSTER_TO_CREW
+                    )
 
         if player.assignment == "Crew":
-            if self._body.position == room:
-                room_reward = room_reward + REWARD_CREW_TO_BODY
+            for body in self._bodies:
+                if body.position == room:
+                    room_reward = room_reward + self._config.get(
+                        CONF_REWARD_CREW_TO_BODY
+                    )
 
         return room_reward
 
@@ -310,8 +309,11 @@ class Simulation:
 
     def move_to_room(self, player, room):
         """Move player to room."""
-        if room in POTENTIAL_ROOMS:
-            potential_rooms = [room + str(x) for x in range(POTENTIAL_ROOMS[room])]
+        if room in self._config.get(CONF_POTENTIAL_ROOMS):
+            potential_rooms = [
+                f"{room}.{x}"
+                for x in range(self._config.get(CONF_POTENTIAL_ROOMS)[room])
+            ]
             ideal_room = self.find_optimal_room(player, potential_rooms)
             player.position = ideal_room
         else:
@@ -319,22 +321,21 @@ class Simulation:
 
     def reshuffle_deck(self):
         """Reshuffle the deck."""
-        self._deck = ROOMS.copy()
+        self._deck = DEFAULT_ROOMS.copy()
         random.shuffle(self._deck)
 
     def calculate_winner(self, turn_count, imposter_reveal_turn):
         """Determine winner of simulation."""
-        winner = None
         if self.is_imposter_kicked_out():
-            winner = "Crew"
-        elif turn_count + 1 == imposter_reveal_turn:
-            winner = "Crew (Imposter ran out of turns)"
-        elif len(self._players) == (len(self._ghosts) + 1):
-            winner = "Imposter"
-        else:
-            winner = "No Winner"
+            return "Crew"
 
-        return winner
+        if turn_count + 1 == imposter_reveal_turn:
+            return "Crew (Imposter ran out of turns)"
+
+        if len(self._players) == (len(self._ghosts) + 1):
+            return "Imposter"
+
+        return "No Winner"
 
     def run(self):
         """Game loop for the game."""
@@ -372,7 +373,9 @@ class Simulation:
             # All players have played this turn.
             if self.imposter_has_killed():
                 if not imposter_reveal_turn:
-                    imposter_reveal_turn = turn_count + IMPOSTER_CHANCES + 1
+                    imposter_reveal_turn = (
+                        turn_count + self._config.get(CONF_IMPOSTER_CHANCES) + 1
+                    )
                 # imposter_chances = imposter_chances - 1
 
             if (turn_count + 1) == imposter_reveal_turn:
@@ -393,7 +396,7 @@ class Simulation:
 
         logging.warning(
             "%s, %s, %s, %s, %s",
-            self._seed,
+            self._config.get(CONF_SEED),
             turn_count,
             winner,
             self._players,

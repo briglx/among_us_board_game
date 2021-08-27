@@ -5,6 +5,7 @@ import logging
 import random
 
 from among_us import Simulation
+from among_us.const import CONF_SEED
 
 logging.basicConfig(filename="game.log", level=logging.WARNING)
 
@@ -69,9 +70,11 @@ if __name__ == "__main__":
     # simulation.run()
 
     random.seed(1)
+    config = {}
     for _ in range(1000):
         seed = random.randint(1, 100000000000)
-        sim = Simulation(seed=seed)
+        config[CONF_SEED] = seed
+        sim = Simulation(config)
         _, winner = sim.run()
 
     # game = Game(seed=100,assignments=assignments,body_location=body_location,deck=deck )

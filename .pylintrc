@@ -1,2 +1,5 @@
 [MASTER]
 ignore=.venv
+
+[SIMILARITIES]
+ignore-imports=yes

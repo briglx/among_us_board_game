@@ -4,17 +4,62 @@ import logging
 import numpy as np
 import pytest
 
-from among_us.genetics import (
+from among_us.const import (
     DUPLICATE_ROOM_STRATEGY_EQUAL,
     DUPLICATE_ROOM_STRATEGY_LADDER,
-    Phenotype,
+    ORIGINAL_GENOME,
+    VALID_GENOTYPE_LEN,
 )
+from among_us.genetics import Phenotype
 
-VALID_GENOTYPE_LEN = 44
 VALID_GENOTYPE_MIN = np.zeros(VALID_GENOTYPE_LEN, int).tolist()
 VALID_GENOTYPE_MAX = np.ones(VALID_GENOTYPE_LEN, int).tolist()
 
-logging.basicConfig(filename="game.log", level=logging.WARNING)
+logging.basicConfig(filename="game.log", level=logging.ERROR)
+
+
+def test_original_phonotype():
+    """Test original gameplay."""
+    phoenotype = Phenotype(1, ORIGINAL_GENOME)
+
+    assert phoenotype.player_count == 4
+    assert phoenotype.imposter_count == 1
+    assert phoenotype.body_count == 1
+    assert phoenotype.room_type_count == 7
+    assert phoenotype.card_count_per_room == 5
+    assert phoenotype.duplicate_room_count == 2
+    assert phoenotype.duplicate_room_strategy == DUPLICATE_ROOM_STRATEGY_LADDER
+    assert phoenotype.duplicate_room_intesity == 2
+    assert phoenotype.imposter_chances == 5
+    assert phoenotype.reward_imposter_to_crew == 10
+    assert phoenotype.reward_crew_to_body == 1
+    assert phoenotype.risk_crew_to_imposter == 10
+    assert phoenotype.risk_crew_to_rival == 5
+
+    assert round(phoenotype.score(), 3) == 5.452
+
+
+def test_phonotype_strategy_equal():
+    """Test original gameplay."""
+    test_genome = np.array(ORIGINAL_GENOME)
+    test_genome[20] = 0
+    phoenotype = Phenotype(1, test_genome)
+
+    assert phoenotype.player_count == 4
+    assert phoenotype.imposter_count == 1
+    assert phoenotype.body_count == 1
+    assert phoenotype.room_type_count == 7
+    assert phoenotype.card_count_per_room == 5
+    assert phoenotype.duplicate_room_count == 2
+    assert phoenotype.duplicate_room_strategy == DUPLICATE_ROOM_STRATEGY_EQUAL
+    assert phoenotype.duplicate_room_intesity == 2
+    assert phoenotype.imposter_chances == 5
+    assert phoenotype.reward_imposter_to_crew == 10
+    assert phoenotype.reward_crew_to_body == 1
+    assert phoenotype.risk_crew_to_imposter == 10
+    assert phoenotype.risk_crew_to_rival == 5
+
+    assert round(phoenotype.score(), 3) == 5.452
 
 
 def test_score():
@@ -22,7 +67,7 @@ def test_score():
     phoenotype = Phenotype(1, VALID_GENOTYPE_MIN)
     score = phoenotype.score()
 
-    assert round(score, 3) == 2.571
+    assert round(score, 3) == 1.625
 
 
 def test_score_2():
@@ -30,7 +75,7 @@ def test_score_2():
     phoenotype = Phenotype(2, VALID_GENOTYPE_MIN)
     score = phoenotype.score()
 
-    assert round(score, 3) == 2.846
+    assert round(score, 3) == 1.457
 
 
 def test_player_count_min():
