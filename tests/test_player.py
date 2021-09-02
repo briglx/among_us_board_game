@@ -41,3 +41,10 @@ def test_get_players():
     assert players[2].name == "Player 3"
     assert players[3].name == "Player 4"
     assert players[4].name == "Player 5"
+
+
+def test_player_print():
+    """Test player print value."""
+    player = Player("Player 1", "Crew")
+
+    assert player.__repr__()

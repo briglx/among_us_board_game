@@ -21,6 +21,10 @@ from .const import (
     DEFAULT_RISK_CREW_TO_IMPOSTER,
     DEFAULT_RISK_CREW_TO_RIVAL,
     DEFAULT_ROOMS,
+    WINNER_CREW,
+    WINNER_CREW_TURNS,
+    WINNER_IMPOSTER,
+    WINNER_UNKNOWN,
 )
 
 
@@ -327,15 +331,15 @@ class Simulation:
     def calculate_winner(self, turn_count, imposter_reveal_turn):
         """Determine winner of simulation."""
         if self.is_imposter_kicked_out():
-            return "Crew"
+            return WINNER_CREW
 
         if turn_count + 1 == imposter_reveal_turn:
-            return "Crew (Imposter ran out of turns)"
+            return WINNER_CREW_TURNS
 
         if len(self._players) == (len(self._ghosts) + 1):
-            return "Imposter"
+            return WINNER_IMPOSTER
 
-        return "No Winner"
+        return WINNER_UNKNOWN
 
     def run(self):
         """Game loop for the game."""
@@ -394,7 +398,7 @@ class Simulation:
 
         winner = self.calculate_winner(turn_count, imposter_reveal_turn)
 
-        logging.warning(
+        logging.info(
             "%s, %s, %s, %s, %s",
             self._config.get(CONF_SEED),
             turn_count,

@@ -6,21 +6,50 @@ import random
 
 from among_us import Simulation
 from among_us.const import CONF_SEED
+from among_us.genetics import parse_genotype, simple_genetic_algorithm
 
 logging.basicConfig(filename="game.log", level=logging.WARNING)
 
 
-# def fitness(simulation):
-#     pass
+def genetic_algo():
+    """Run gentic algorithym."""
+    seed = None
+    generations = 100
+    population_fitness = simple_genetic_algorithm(seed, generations=generations)
 
-# def test_parameters():
+    for parent in population_fitness:
+        print(parent[-1])
+        print(parse_genotype(parent[:-1].astype(int)))
 
 
-#     seed = random.randint(1, 100000000000)
+def run_simulation():
+    """Run simulations."""
+    # assignments = ["Imposter", "Crew", "Crew", "Crew"]
+    # BODY_LOCATION = "Back Patio"
+    # deck = ["Kitchen", "Kitchen", "Kitchen", "Kitchen", "Office", "Office"]
 
-#     sim = Simulation(seed=seed)
-#     sim.run()
-#     sim.results()
+    # for _ in range(1000):
+
+    #     import random
+
+    #     seed = random.randint(1, 100000000000)
+
+    #     simulation = Simulation(seed=seed)
+    #     simulation.run()
+
+    # simulation = Simulation(seed=31316319423)
+    # simulation.run()
+
+    random.seed(1)
+    config = {}
+    for _ in range(1000):
+        seed = random.randint(1, 100000000000)
+        config[CONF_SEED] = seed
+        sim = Simulation(config)
+        _, _ = sim.run()
+
+    # game = Game(seed=100,assignments=assignments,body_location=body_location,deck=deck )
+    # game.game_loop()
 
 
 if __name__ == "__main__":
@@ -53,29 +82,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    assignments = ["Imposter", "Crew", "Crew", "Crew"]
-    BODY_LOCATION = "Back Patio"
-    deck = ["Kitchen", "Kitchen", "Kitchen", "Kitchen", "Office", "Office"]
-
-    # for _ in range(1000):
-
-    #     import random
-
-    #     seed = random.randint(1, 100000000000)
-
-    #     simulation = Simulation(seed=seed)
-    #     simulation.run()
-
-    # simulation = Simulation(seed=31316319423)
-    # simulation.run()
-
-    random.seed(1)
-    config = {}
-    for _ in range(1000):
-        seed = random.randint(1, 100000000000)
-        config[CONF_SEED] = seed
-        sim = Simulation(config)
-        _, winner = sim.run()
-
-    # game = Game(seed=100,assignments=assignments,body_location=body_location,deck=deck )
-    # game.game_loop()
+    genetic_algo()

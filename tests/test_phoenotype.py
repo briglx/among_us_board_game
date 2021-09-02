@@ -102,7 +102,7 @@ def test_duplicate_room_strategy_ladder():
     """Test duplicate room strategy."""
     phoenotype = Phenotype(1, VALID_GENOTYPE_MAX)
     assert phoenotype.player_count == 18
-    assert phoenotype.imposter_count == 8
+    assert phoenotype.imposter_count == 4
     assert phoenotype.body_count == 8
     assert phoenotype.room_type_count == 10
     assert phoenotype.card_count_per_room == 18

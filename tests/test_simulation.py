@@ -1,6 +1,12 @@
 """Test Simulation functionality."""
 from among_us import Simulation
-from among_us.const import CONF_BODY_LOCATIONS, CONF_DECK, CONF_SEED
+from among_us.const import (
+    CONF_BODY_LOCATIONS,
+    CONF_DECK,
+    CONF_SEED,
+    WINNER_CREW,
+    WINNER_IMPOSTER,
+)
 
 
 def test_all_ghosts_in_grave_when_imposter_wins():
@@ -25,7 +31,7 @@ def test_simulation_results():
     simulation = Simulation(config)
     _, winner = simulation.run()
 
-    assert winner == "Crew"
+    assert winner == WINNER_CREW
 
 
 def test_imposter_wins():
@@ -38,4 +44,4 @@ def test_imposter_wins():
     simulation = Simulation(config)
     _, winner = simulation.run()
 
-    assert winner == "Imposter"
+    assert winner == WINNER_IMPOSTER

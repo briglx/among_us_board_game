@@ -10,6 +10,10 @@ CONF_RISK_CREW_TO_IMPOSTER = "risk_crew_to_imposter"
 CONF_RISK_CREW_TO_RIVAL = "risk_crew_to_rival"
 CONF_SEED = "seed"
 
+WINNER_CREW = "winner_crew"
+WINNER_CREW_TURNS = "winner_crew_imposter_ran_out_of_turns"
+WINNER_IMPOSTER = "winner_imposter"
+WINNER_UNKNOWN = "unknown winner"
 
 DEFAULT_PLAYERS = ["Player 1", "Player 2", "Player 3", "Player 4"]
 DEFAULT_ASSIGNMENTS = ["Crew", "Crew", "Crew", "Imposter"]
@@ -77,21 +81,24 @@ VALID_GENOTYPE_LEN = 43
 # Player Count is bitwise added from 0-15
 # Base is 3 so values are 3-18
 # index[0:4]
+PLAYER_COUNT = "player_count"
 PLAYER_COUNT_0 = 0
 PLAYER_COUNT_2 = 1
 PLAYER_COUNT_4 = 2
 PLAYER_COUNT_8 = 3
 
 # Imposter is bitwise added from 0 to 7
-# Base is 1 so values are 1-8
-# index[4:7]
+# Base is 1 so values are 1-4
+# index[4:6]
+IMPOSTER_COUNT = "imposter_count"
 IMPOSTER_COUNT_0 = 4
 IMPOSTER_COUNT_2 = 5
-IMPOSTER_COUNT_4 = 6
+# IMPOSTER_COUNT_4 = 6
 
 # Body count is bitwise added from 0 to 7
 # Base is 1 so values are 1-8
 # index[7:10]
+BODY_COUNT = "body_count"
 BODY_COUNT_0 = 7
 BODY_COUNT_2 = 8
 BODY_COUNT_4 = 9
@@ -100,6 +107,7 @@ BODY_COUNT_4 = 9
 # Describes the number of different types of rooms
 # Base is 3 so values are 3-10
 # index[10:13]
+ROOM_TYPE_COUNT = "room_type_count"
 ROOM_TYPE_COUNT_0 = 10
 ROOM_TYPE_COUNT_2 = 11
 ROOM_TYPE_COUNT_4 = 12
@@ -108,6 +116,7 @@ ROOM_TYPE_COUNT_4 = 12
 # is bitwise added from 0 to 15
 # Base is 3 so values are 3-18
 # index[13:17]
+CARD_COUNT_BY_ROOM = "card_count_by_room"
 CARD_COUNT_BY_ROOM_0 = 13
 CARD_COUNT_BY_ROOM_2 = 14
 CARD_COUNT_BY_ROOM_4 = 15
@@ -115,6 +124,7 @@ CARD_COUNT_BY_ROOM_8 = 16
 
 # Duplicate Rooms is Bitwise added from 0-7
 # index[17:20]
+DUPLICATE_ROOMS = "duplicate_rooms"
 DUPLICATE_ROOMS_0 = 17
 DUPLICATE_ROOMS_2 = 18
 DUPLICATE_ROOMS_4 = 19
@@ -122,6 +132,7 @@ DUPLICATE_ROOMS_4 = 19
 # Duplicate Rooms Strategy is how the rooms are built and is Categorical.
 # Default behavior is to build DUPLICATE_ROOM_STRATEGY_EQUAL  is Bitwise added from 0-15
 # index[20:21]
+DUPLICATE_ROOM_STRATEGY = "duplicate_room_strategy"
 DUPLICATE_ROOM_STRATEGY_EQUAL = (
     101  # All duplicate rooms will have the same number of rooms
 )
@@ -130,12 +141,14 @@ DUPLICATE_ROOM_STRATEGY_LADDER = 20  # Duplicate Rooms will have growing number 
 # Duplicate room instensity determines the number of duplicate room is Bitwise added from 0-3
 # Base is 1 so values are 1-4
 # index[21:23]
+DUPLICATE_ROOM_INTESITY = "duplicate_room_intensity"
 DUPLICATE_ROOM_INTESITY_0 = 21
 DUPLICATE_ROOM_INTESITY_2 = 22
 
 # Imposter chances are bitwise added from 0-15.
 # Base is 3 so values are 3-18
 # index[23:27]
+IMPOSTER_CHANCES = "imposter_chances"
 IMPOSTER_CHANCES_0 = 23
 IMPOSTER_CHANCES_2 = 24
 IMPOSTER_CHANCES_4 = 25
@@ -143,6 +156,7 @@ IMPOSTER_CHANCES_8 = 26
 
 # Reward Imposter to Crew is bitwise added from 0 to 15
 # index[27:31]
+REWARD_IMPOSTER_TO_CREW = "reward_imposter_to_crew"
 REWARD_IMPOSTER_TO_CREW_0 = 27
 REWARD_IMPOSTER_TO_CREW_2 = 28
 REWARD_IMPOSTER_TO_CREW_4 = 29
@@ -150,6 +164,7 @@ REWARD_IMPOSTER_TO_CREW_8 = 30
 
 # Reward Crew to Body is bitwise added from 0 to 15
 # index[31:34]
+REWARD_CREW_TO_BODY = "reward_crew_to_body"
 REWARD_CREW_TO_BODY_0 = 31
 REWARD_CREW_TO_BODY_2 = 32
 REWARD_CREW_TO_BODY_4 = 33
@@ -157,6 +172,7 @@ REWARD_CREW_TO_BODY_8 = 34
 
 # Reward Crew to Imposter is bitwise added from 0 to 15
 # index[35:39]
+RISK_CREW_TO_IMPOSTER = "risk_crew_to_imposter"
 RISK_CREW_TO_IMPOSTER_0 = 35
 RISK_CREW_TO_IMPOSTER_2 = 36
 RISK_CREW_TO_IMPOSTER_4 = 37
@@ -164,6 +180,7 @@ RISK_CREW_TO_IMPOSTER_8 = 38
 
 # Reward Crew to Rival is bitwise added from 0 to 15
 # index[39:43]
+RISK_CREW_TO_RIVAL = "risk_crew_to_rival"
 RISK_CREW_TO_RIVAL_0 = 39
 RISK_CREW_TO_RIVAL_2 = 40
 RISK_CREW_TO_RIVAL_4 = 41

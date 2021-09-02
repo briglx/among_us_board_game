@@ -1,4 +1,5 @@
 """Genetic Algorithm to optimize game parameters."""
+import math
 import random
 
 import numpy as np
@@ -6,6 +7,8 @@ import numpy as np
 from among_us import Simulation
 
 from .const import (
+    BODY_COUNT,
+    CARD_COUNT_BY_ROOM,
     CONF_ASSIGNMENTS,
     CONF_BODY_LOCATIONS,
     CONF_DECK,
@@ -16,25 +19,265 @@ from .const import (
     CONF_RISK_CREW_TO_IMPOSTER,
     CONF_RISK_CREW_TO_RIVAL,
     CONF_SEED,
+    DUPLICATE_ROOM_INTESITY,
+    DUPLICATE_ROOM_STRATEGY,
     DUPLICATE_ROOM_STRATEGY_EQUAL,
     DUPLICATE_ROOM_STRATEGY_LADDER,
+    DUPLICATE_ROOMS,
+    IMPOSTER_CHANCES,
+    IMPOSTER_COUNT,
+    ORIGINAL_GENOME,
+    PLAYER_COUNT,
+    REWARD_CREW_TO_BODY,
+    REWARD_IMPOSTER_TO_CREW,
+    RISK_CREW_TO_IMPOSTER,
+    RISK_CREW_TO_RIVAL,
+    ROOM_TYPE_COUNT,
     VALID_GENOTYPE_LEN,
+    WINNER_CREW,
+    WINNER_CREW_TURNS,
+    WINNER_IMPOSTER,
 )
 
 
-def create_random_population(size):
+def create_random_population(size, seed=None):
     """Create random population from size."""
-    population = [
-        np.random.randint(0, 2, VALID_GENOTYPE_LEN).tolist() for _ in range(size)
-    ]
-    return population
+    np.random.seed(seed)
+    population = []
+
+    count = 0
+    while count < size:
+        try:
+            genotype = np.random.randint(0, 2, VALID_GENOTYPE_LEN).tolist()
+            Phenotype(seed, genotype)
+            population.append(genotype)
+            count = count + 1
+        except ValueError:
+            pass
+
+    return np.array(population).astype(int)
 
 
 def calc_fitness(genotype, seed=None):
-    """Calculate the fitness of the genotype."""
-    phenotype = Phenotype(seed, genotype)
+    """Calculate the fitness of the genotype. Return a number between 0-1.
 
-    return phenotype.score()
+    Gaussian curve around 1 with a long tail. 1/2 and 2 give similar results
+    1/3 and 3 also give similar results.
+    y=e^(-10(log(x^2))) long tail
+    y=e^(-h(x-1)^2) original with hyper parameter
+    """
+    hyper_parameter_standard_dev = -1
+
+    phenotype = Phenotype(seed, genotype)
+    score = phenotype.score()
+
+    # fitness = math.exp(hyper_parameter_standard_dev * (score-1)**2)
+
+    # Long tail
+    fitness = math.exp(10 * hyper_parameter_standard_dev * (math.log(score)) ** 2)
+
+    return round(fitness, 5)
+
+
+def select_parents(pop_fit, seed=None):
+    """Select the best genotypes based on fitness."""
+    rng = np.random
+    rng.seed(seed)
+
+    if len(pop_fit) < 2:
+        return None
+
+    # Add small value in case of zeros and normalize
+    pop_fit = pop_fit.astype(float)
+    pop_fit[:, -1] += 0.0001
+    pop_fit[:, -1] = pop_fit[:, -1] / pop_fit[:, -1].sum()
+
+    # Select parents based on probabilities
+    parents = pop_fit[
+        rng.choice(len(pop_fit), 2, replace=False, p=pop_fit[:, -1]), :-1
+    ].astype(int)
+    return parents
+
+
+def is_valid_genotype(genotype):
+    """Check is genotype is valid."""
+    try:
+        Phenotype(seed=None, genotype=genotype)
+        return True
+    except ValueError:
+        return False
+
+
+def crossover(parents, seed=None):
+    """Cross over the pair at a randomly chosen point.
+
+    parents are only the genotype.
+
+    """
+    count = 0
+    offspring = []
+
+    random.seed(seed)
+
+    while count < 2:
+
+        point = random.randrange(1, len(parents[0][:-1]))
+
+        offspring1 = np.concatenate((parents[0][:point], parents[1][point:]))
+        offspring2 = np.concatenate((parents[1][:point], parents[0][point:]))
+
+        if is_valid_genotype(offspring1) and is_valid_genotype(offspring2):
+
+            offspring.append(offspring1)
+            offspring.append(offspring2)
+            count = count + 2
+
+    return (offspring, point)
+
+
+def mutate_genotype(genotype, point, is_head, seed=None):
+    """Mutate genotype at locus."""
+    np.random.seed(seed)
+    while True:
+
+        if is_head:
+            mutant_alleles = np.random.randint(0, 2, point).tolist()
+            mutated_genotype = np.concatenate((mutant_alleles, genotype[point:]))
+        else:
+
+            mutant_alleles = np.random.randint(
+                0, 2, VALID_GENOTYPE_LEN - point
+            ).tolist()
+            mutated_genotype = np.concatenate((genotype[:point], mutant_alleles))
+
+        if is_valid_genotype(mutated_genotype):
+            return mutated_genotype
+
+
+def create_offspring(population_fitness, size, seed=None):
+    """Create offspring from parents."""
+    mutation_threshold = 0.1
+
+    np.random.seed(seed)
+    rng = np.random
+
+    # Select Parents
+    parents = select_parents(population_fitness)
+    # parents = np.array(parents).astype(int)
+
+    # Select Children from different crossover points
+    children = set()
+    while len(children) < size:
+        # Cross over
+        offspring, point = crossover(parents)
+
+        if rng.rand() < mutation_threshold:
+            child1 = mutate_genotype(offspring[0], point, True, seed)
+            children.add(tuple(child1))
+        else:
+            children.add(tuple(offspring[0]))
+
+        if rng.rand() < mutation_threshold:
+            child2 = mutate_genotype(offspring[1], point, False, seed)
+            children.add(tuple(child2))
+        else:
+            children.add(tuple(offspring[1]))
+
+    # convert set back to arrays
+    items = []
+    for child in children:
+        items.append(list(child))
+    children = np.array(items)
+
+    return children, parents
+
+
+def simple_genetic_algorithm(seed=None, generations=100):
+    """Implement a simple genetic algorithm."""
+    population_size = 10
+
+    # Select randomly generated population
+    random.seed(seed)
+    population = create_random_population(population_size, seed)
+    population = np.vstack([population, np.array(ORIGINAL_GENOME)])
+
+    for _ in range(generations):
+        fitnesses = []
+        # Calculate Fitness for Population
+        for genotype in population:
+            fitness = calc_fitness(genotype, random.randint(1, 100000000000))
+            fitnesses.append(fitness)
+
+        fitnesses = np.array(fitnesses)
+        if fitnesses.sum() > 0:
+            fitnesses = fitnesses / fitnesses.sum()
+        fitness_score = fitnesses.reshape(1, len(fitnesses))
+        population_fitness = np.append(population, fitness_score.T, axis=1)
+
+        # Select Offspring
+        offspring, parents = create_offspring(population_fitness, 10, seed)
+        population = np.concatenate((offspring, parents))
+
+    # Calc last population
+    fitnesses = []
+    for genotype in population:
+        fitness = calc_fitness(genotype, random.randint(1, 100000000000))
+        fitnesses.append(fitness)
+
+    fitnesses = np.array(fitnesses)
+    if fitnesses.sum() > 0:
+        fitnesses = fitnesses / fitnesses.sum()
+    fitnesses = fitnesses.reshape(1, len(fitnesses))
+    population_fitness = np.append(population, fitnesses.T, axis=1)
+    return population_fitness
+
+
+def parse_genotype(genotype):
+    """Parse genotype to readable dictionary."""
+    # Parse genotype
+    parsed_genotype = {}
+
+    parsed_genotype[PLAYER_COUNT] = (
+        3 + np.packbits(genotype[:4], bitorder="little").tolist()[0]
+    )
+    parsed_genotype[IMPOSTER_COUNT] = (
+        1 + np.packbits(genotype[4:6], bitorder="little").tolist()[0]
+    )
+    parsed_genotype[BODY_COUNT] = (
+        1 + np.packbits(genotype[7:10], bitorder="little").tolist()[0]
+    )
+    parsed_genotype[ROOM_TYPE_COUNT] = (
+        3 + np.packbits(genotype[10:13], bitorder="little").tolist()[0]
+    )
+    parsed_genotype[CARD_COUNT_BY_ROOM] = (
+        3 + np.packbits(genotype[13:17], bitorder="little").tolist()[0]
+    )
+    parsed_genotype[DUPLICATE_ROOMS] = np.packbits(
+        genotype[17:20], bitorder="little"
+    ).tolist()[0]
+    if np.packbits(genotype[20:21], bitorder="little").tolist()[0]:
+        parsed_genotype[DUPLICATE_ROOM_STRATEGY] = DUPLICATE_ROOM_STRATEGY_LADDER
+    else:
+        parsed_genotype[DUPLICATE_ROOM_STRATEGY] = DUPLICATE_ROOM_STRATEGY_EQUAL
+    parsed_genotype[DUPLICATE_ROOM_INTESITY] = (
+        1 + np.packbits(genotype[21:23], bitorder="little").tolist()[0]
+    )
+    parsed_genotype[IMPOSTER_CHANCES] = (
+        3 + np.packbits(genotype[23:27], bitorder="little").tolist()[0]
+    )
+    parsed_genotype[REWARD_IMPOSTER_TO_CREW] = np.packbits(
+        genotype[27:31], bitorder="little"
+    ).tolist()[0]
+    parsed_genotype[REWARD_CREW_TO_BODY] = np.packbits(
+        genotype[31:35], bitorder="little"
+    ).tolist()[0]
+    parsed_genotype[RISK_CREW_TO_IMPOSTER] = np.packbits(
+        genotype[35:39], bitorder="little"
+    ).tolist()[0]
+    parsed_genotype[RISK_CREW_TO_RIVAL] = np.packbits(
+        genotype[39:43], bitorder="little"
+    ).tolist()[0]
+    return parsed_genotype
 
 
 # pylint: disable-msg=R0902
@@ -54,7 +297,7 @@ class Phenotype:
             3 + np.packbits(genotype[:4], bitorder="little").tolist()[0]
         )
         self._imposter_count = (
-            1 + np.packbits(genotype[4:7], bitorder="little").tolist()[0]
+            1 + np.packbits(genotype[4:6], bitorder="little").tolist()[0]
         )
         self._body_count = (
             1 + np.packbits(genotype[7:10], bitorder="little").tolist()[0]
@@ -261,7 +504,14 @@ class Phenotype:
             else:
                 score[winner] = score[winner] + 1
 
-        crew_wins = score["Crew"] + score["Crew (Imposter ran out of turns)"]
-        imposter_wins = score["Imposter"]
+        crew_wins = 0
+        if score.get(WINNER_CREW):
+            crew_wins = crew_wins + score.get(WINNER_CREW)
+        if score.get(WINNER_CREW_TURNS):
+            crew_wins = crew_wins + score.get(WINNER_CREW_TURNS)
+
+        imposter_wins = 0.0000001  # avoid divide by zero
+        if score.get(WINNER_IMPOSTER):
+            imposter_wins = score.get(WINNER_IMPOSTER)
 
         return crew_wins / imposter_wins
