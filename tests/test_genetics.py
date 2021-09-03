@@ -21,15 +21,17 @@ from among_us.const import (
 )
 from among_us.genetics import (
     calc_fitness,
+    create_offspring,
     crossover,
     is_valid_genotype,
     mutate_genotype,
     parse_genotype,
+    record_top_variants,
     select_parents,
     simple_genetic_algorithm,
 )
 
-VALID_GENOTYPE_MIN = np.zeros(VALID_GENOTYPE_LEN, int).tolist()
+from . import POOR_VARIANTS, VALID_GENOTYPE_MIN
 
 
 def test_calc_fitness():
@@ -165,3 +167,44 @@ def test_crossover():
     offspring, _ = crossover(population)
 
     assert len(offspring) == 2
+
+
+def test_create_offspring():
+    """Test Create Offspring."""
+    test_genome = np.array(ORIGINAL_GENOME)
+    test_genome[:2] = [0, 1]
+    population = np.array([ORIGINAL_GENOME, test_genome])
+    seed = 100
+
+    test_fitness = np.array([[0.3, 0.7]])
+    # test_fitness.reshape(1, len(test_fitness))
+    population_fitness = np.append(population, test_fitness.T, axis=1)
+
+    offspring, _ = create_offspring(population_fitness, 10, POOR_VARIANTS, seed)
+
+    assert offspring[0].tolist() not in POOR_VARIANTS.tolist()
+    assert offspring[1].tolist() not in POOR_VARIANTS.tolist()
+    assert offspring[2].tolist() not in POOR_VARIANTS.tolist()
+    assert offspring[3].tolist() not in POOR_VARIANTS.tolist()
+    assert offspring[4].tolist() not in POOR_VARIANTS.tolist()
+    assert offspring[5].tolist() not in POOR_VARIANTS.tolist()
+    assert offspring[6].tolist() not in POOR_VARIANTS.tolist()
+    assert offspring[7].tolist() not in POOR_VARIANTS.tolist()
+    assert offspring[8].tolist() not in POOR_VARIANTS.tolist()
+    assert offspring[9].tolist() not in POOR_VARIANTS.tolist()
+
+
+def test_record_top_variants_when_all_zero():
+    """Test recording top variants."""
+    generation = 1
+
+    test_genome = np.array(ORIGINAL_GENOME)
+    test_genome[:2] = [0, 1]
+    population = np.array([ORIGINAL_GENOME, test_genome])
+
+    test_fitness = np.array([[0.0, 0.0]])
+    # test_fitness.reshape(1, len(test_fitness))
+    population_fitness = np.append(population, test_fitness.T, axis=1)
+
+    # Test no error
+    record_top_variants(generation, population_fitness)

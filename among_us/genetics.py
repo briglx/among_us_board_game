@@ -1,4 +1,5 @@
 """Genetic Algorithm to optimize game parameters."""
+import logging
 import math
 import random
 
@@ -38,6 +39,15 @@ from .const import (
     WINNER_CREW_TURNS,
     WINNER_IMPOSTER,
 )
+
+POOR_VARIANT_FILE_NAME = "poor_variants.out"
+
+variant_logger = logging.getLogger("algo_run_history")
+fmt = logging.Formatter("%(asctime)s %(message)s", datefmt="%Y-%m-%d-%H:%M:%S")
+handler = logging.FileHandler("among_us_variants.log")
+handler.setFormatter(fmt)
+variant_logger.addHandler(handler)
+variant_logger.setLevel(logging.INFO)
 
 
 def create_random_population(size, seed=None):
@@ -154,12 +164,11 @@ def mutate_genotype(genotype, point, is_head, seed=None):
             return mutated_genotype
 
 
-def create_offspring(population_fitness, size, seed=None):
+def create_offspring(population_fitness, size, poor_variants, seed=None):
     """Create offspring from parents."""
     mutation_threshold = 0.1
-
-    np.random.seed(seed)
     rng = np.random
+    rng.seed(seed)
 
     # Select Parents
     parents = select_parents(population_fitness)
@@ -171,17 +180,27 @@ def create_offspring(population_fitness, size, seed=None):
         # Cross over
         offspring, point = crossover(parents)
 
+        potential_child1 = None
+        potential_child2 = None
+        # Check first Offspring
         if rng.rand() < mutation_threshold:
-            child1 = mutate_genotype(offspring[0], point, True, seed)
-            children.add(tuple(child1))
+            potential_child1 = mutate_genotype(offspring[0], point, True, seed)
+            # children.add(tuple(child1))
         else:
-            children.add(tuple(offspring[0]))
+            potential_child1 = offspring[0]
+            # children.add(tuple(offspring[0]))
 
+        if potential_child1.tolist() not in poor_variants.tolist():
+            children.add(tuple(potential_child1))
+
+        # Check second offspring
         if rng.rand() < mutation_threshold:
-            child2 = mutate_genotype(offspring[1], point, False, seed)
-            children.add(tuple(child2))
+            potential_child2 = mutate_genotype(offspring[1], point, False, seed)
         else:
-            children.add(tuple(offspring[1]))
+            potential_child2 = offspring[1]
+
+        if potential_child2.tolist() not in poor_variants.tolist():
+            children.add(tuple(potential_child2))
 
     # convert set back to arrays
     items = []
@@ -192,16 +211,64 @@ def create_offspring(population_fitness, size, seed=None):
     return children, parents
 
 
+def get_poor_variants():
+    """Load poor variants."""
+    poor_variants = np.empty((0, 43))
+    try:
+        poor_variants = np.loadtxt(POOR_VARIANT_FILE_NAME, dtype="int64", delimiter=",")
+    except OSError:
+        pass
+
+    return poor_variants
+
+
+def add_poor_variants(poor_variants, pop_fit):
+    """Add poor variants to list."""
+    new_variants = pop_fit[np.where(pop_fit[:, -1] == 0)][:, :-1].astype(int)
+
+    # Append variants to save_file
+    variant_file = open(POOR_VARIANT_FILE_NAME, "a")
+    np.savetxt(variant_file, new_variants, fmt="%.0f", delimiter=",")
+    variant_file.close()
+
+    # Append to in-memory list
+    if len(poor_variants) == 0:
+        poor_variants = new_variants
+    else:
+        poor_variants = np.concatenate((poor_variants, new_variants))
+
+    return poor_variants
+
+
+def record_top_variants(generation, pop_fit):
+    """Record the top performs."""
+    top_idx = np.argmax(pop_fit[:, -1])
+
+    top_variant = pop_fit[top_idx, :-1].astype(int)
+    score = pop_fit[top_idx, -1]
+
+    # top_variant = pop_fit[top_idx][:,:-1].astype(int)
+    # score = pop_fit[top_idx][-1]
+    variant_logger.info("Gen-%s, %.5f, %s ", generation, score, top_variant)
+
+
 def simple_genetic_algorithm(seed=None, generations=100):
     """Implement a simple genetic algorithm."""
     population_size = 10
+
+    variant_logger.info(
+        "Simple genetic algorithm run. Seed:%s, Generations:%s", seed, generations
+    )
+
+    poor_variants = get_poor_variants()
+    variant_logger.info("Loading %s poor variants.", len(poor_variants))
 
     # Select randomly generated population
     random.seed(seed)
     population = create_random_population(population_size, seed)
     population = np.vstack([population, np.array(ORIGINAL_GENOME)])
 
-    for _ in range(generations):
+    for generation in range(generations):
         fitnesses = []
         # Calculate Fitness for Population
         for genotype in population:
@@ -214,8 +281,14 @@ def simple_genetic_algorithm(seed=None, generations=100):
         fitness_score = fitnesses.reshape(1, len(fitnesses))
         population_fitness = np.append(population, fitness_score.T, axis=1)
 
+        # Track top/poor variants
+        poor_variants = add_poor_variants(poor_variants, population_fitness)
+        record_top_variants(generation, population_fitness)
+
         # Select Offspring
-        offspring, parents = create_offspring(population_fitness, 10, seed)
+        offspring, parents = create_offspring(
+            population_fitness, 10, poor_variants, seed
+        )
         population = np.concatenate((offspring, parents))
 
     # Calc last population
@@ -229,6 +302,11 @@ def simple_genetic_algorithm(seed=None, generations=100):
         fitnesses = fitnesses / fitnesses.sum()
     fitnesses = fitnesses.reshape(1, len(fitnesses))
     population_fitness = np.append(population, fitnesses.T, axis=1)
+
+    # Track top/poor variants
+    poor_variants = add_poor_variants(poor_variants, population_fitness)
+    record_top_variants(generation + 1, population_fitness)
+
     return population_fitness
 
 
@@ -514,4 +592,4 @@ class Phenotype:
         if score.get(WINNER_IMPOSTER):
             imposter_wins = score.get(WINNER_IMPOSTER)
 
-        return crew_wins / imposter_wins
+        return (crew_wins + 0.0001) / imposter_wins
