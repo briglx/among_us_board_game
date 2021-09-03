@@ -388,7 +388,7 @@ class Simulation:
             if len(self._players) == (len(self._ghosts) + 1):
                 break
 
-            if len(self._deck) <= (len(self._players) - len(self._ghosts)):
+            if len(self._deck) <= 1 + (len(self._players) - len(self._ghosts)):
                 self.reshuffle_deck()
 
             # Bump turn count

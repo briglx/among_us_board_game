@@ -239,6 +239,13 @@ def add_poor_variants(poor_variants, pop_fit):
 
     return poor_variants
 
+def small_print_genotype(genotype):
+    """Get small print representation of a genotype."""
+    special_chars = "array()[]\n "
+    str_genotype = np.array_repr(genotype)
+    for char in special_chars:
+        str_genotype = str_genotype.replace(char, '')
+    return str_genotype
 
 def record_top_variants(generation, pop_fit):
     """Record the top performs."""
@@ -249,7 +256,7 @@ def record_top_variants(generation, pop_fit):
 
     # top_variant = pop_fit[top_idx][:,:-1].astype(int)
     # score = pop_fit[top_idx][-1]
-    variant_logger.info("Gen-%s, %.5f, %s ", generation, score, top_variant)
+    variant_logger.info("Gen-%s, %.5f, %s ", generation, score, small_print_genotype(top_variant))
 
 
 def simple_genetic_algorithm(seed=None, generations=100):
@@ -485,13 +492,13 @@ class Phenotype:
 
     def is_valid_genotype(self):
         """Validate the genotype."""
-        # Imposter Count less than or equal Players
-        # Body less than or equal to rooms
+        # Imposter Count less than half the players (1 imposter to 3 players)
+        # Body + 1 less than or equal to rooms
         # Duplicate rooms must be less than or equal to room count
 
         is_valid = True
-        is_valid = is_valid and (self._imposter_count < self._player_count)
-        is_valid = is_valid and (self._body_count <= self.room_type_count)
+        is_valid = is_valid and (self._imposter_count < self._player_count / 2.0)
+        is_valid = is_valid and (self._body_count + 1 < self.room_type_count)
         is_valid = is_valid and (self.duplicate_room_count <= self.room_type_count)
 
         return is_valid

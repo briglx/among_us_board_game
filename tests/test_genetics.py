@@ -29,6 +29,7 @@ from among_us.genetics import (
     record_top_variants,
     select_parents,
     simple_genetic_algorithm,
+    small_print_genotype,
 )
 
 from . import POOR_VARIANTS, VALID_GENOTYPE_MIN
@@ -51,7 +52,7 @@ def test_simple_genetic_algorithm():
     population_fitness = simple_genetic_algorithm(100, generations=2)
 
     # print(parents)
-    assert len(population_fitness) == 12
+    assert len(population_fitness) == 13
     assert population_fitness.max() == 1.0
     # assert fitnesses[4][0] == 0.72987
 
@@ -208,3 +209,11 @@ def test_record_top_variants_when_all_zero():
 
     # Test no error
     record_top_variants(generation, population_fitness)
+
+def test_small_print_genotype():
+    """Test small print genotype."""
+
+    test_genome = np.array(ORIGINAL_GENOME)
+    str_genotype = small_print_genotype(test_genome)
+                           
+    assert str_genotype == '1,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,1,0,1,1,0,0,1,0,0,0,1,0,1,1,0,0,0,0,1,0,1,1,0,1,0'
